@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+* Fixed use-after-free / crash when closing the focused tab with `:tabclose`.
+  The command history and `:` register were saved after the command executed,
+  so closing the current tab first freed the client before the write.
+  Also fixed a secondary use-after-free in the command-line activation handler
+
 ## [4.0.0]
 ### Added
 * `FEATURE_NO_TABS` in src/config.h to allow the user to compile vimb without
