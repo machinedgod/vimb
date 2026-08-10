@@ -117,6 +117,11 @@ release_notes="$(awk '
 ' <<<"$changelog")"
 release_notes="$(printf '%s\n' "$release_notes" | sed '/^[[:space:]]*$/d')"
 
+# The release description is rendered below the release title in the GitHub
+# UI, so drop each heading two levels (`###` becomes `#`) to keep the
+# changelog-style structure readable there.
+release_notes="$(sed -E 's/^##//' <<<"$release_notes")"
+
 # Rewrite the changelog: insert the new version heading after [Unreleased]
 # and rewire the compare links.
 new_link="[Unreleased]: ${REPO_URL}/compare/${version}...${BRANCH}"
