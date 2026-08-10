@@ -540,15 +540,28 @@ VbCmdResult ex_run_string(Client *c, const char *input, gboolean enable_history)
     arg->lhs   = g_string_new("");
     arg->rhs   = g_string_new("");
 
+    /* Commands starting with an additional ':' or whitespace are not
+     * recorded in history or the ':' register (matching parse()). */
+    if (enable_history) {
+        const char *p = input;
+        while (*p && (*p == ':' || VB_IS_SPACE(*p))) {
+            p++;
+            nohist = TRUE;
+        }
+    }
+
+    /* Save the command to history and the ':' register before executing it.
+     * Some commands like ':tabclose' can free the current client, so any
+     * write to client-owned memory must happen while it is still valid. */
+    if (enable_history && !nohist) {
+        history_add(c, HISTORY_COMMAND, input, NULL);
+        vb_register_add(c, ':', input);
+    }
+
     while (in && *in) {
         if (!parse(c, &in, arg, &nohist) || !(res = execute(c, arg))) {
             break;
         }
-    }
-
-    if (enable_history && !nohist) {
-        history_add(c, HISTORY_COMMAND, input, NULL);
-        vb_register_add(c, ':', input);
     }
 
     free_cmdarg(arg);
@@ -586,11 +599,15 @@ static void input_activate(Client *c)
             vb_enter(c, 'n');
             res = ex_run_string(c, cmd, TRUE);
             if (!(res & CMD_KEEPINPUT)) {
-                /* clear input on success if this is not explicit ommited */
-                vb_input_set_text(c, "");
+                /* clear input on success if this is not explicitly omitted;
+                 * c may have been freed (e.g. :tabclose), so check liveness */
+                Client *alive;
+                for (alive = vb.clients; alive && alive != c; alive = alive->next);
+                if (alive) {
+                    vb_input_set_text(c, "");
+                }
             }
             break;
-
     }
     g_free(text);
 }
