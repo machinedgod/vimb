@@ -370,6 +370,18 @@ var hints = Object.freeze((function(){
         if (config.keepOpen) {
             /* reset the hint-keys filter */
             filterKeys = "";
+
+            /* Unfocus the just-fired hint and clear the active marker so the
+             * element is not left stuck in the highlighted (focus) state. This
+             * lets the user keep selecting further elements in extended (g-)
+             * hint mode without a stale green highlight. show(false) then
+             * focuses the first hint as a fresh starting point. */
+            if (activeHint) {
+                activeHint.unfocus();
+                mouseEvent(activeHint.e, "mouseout");
+            }
+            activeHint = undefined;
+
             show(false);
         } else {
             clear(true);

@@ -35,7 +35,7 @@
 #include <unistd.h>
 #include <webkit/webkit.h>
 #include <libintl.h>
-
+#include "hints.h"
 #include "../version.h"
 #include "ascii.h"
 #include "command.h"
@@ -464,7 +464,19 @@ gboolean vb_load_uri(Client *c, const Arg *arg)
         spawn_new_instance(uri);
 #else
         /* Open in a new tab */
-        Client *newclient = vb_tab_new(c, uri);
+        Client *newclient = vb_tab_new(c, uri, TRUE);
+        if (newclient) {
+            webkit_web_view_load_uri(newclient->webview, uri);
+            set_title(newclient, uri);
+        }
+#endif
+    } else if (arg->i == TARGET_TAB_BG) {
+#ifdef FEATURE_NO_TABS
+        /* With no-tabs feature, spawn a new browser instance instead */
+        spawn_new_instance(uri);
+#else
+        /* Open in a new tab in the background (don't activate) */
+        Client *newclient = vb_tab_new(c, uri, FALSE);
         if (newclient) {
             webkit_web_view_load_uri(newclient->webview, uri);
             set_title(newclient, uri);
@@ -886,7 +898,7 @@ __attribute__((used)) static void client_destroy(Client *c)
 static Client *client_new(WebKitWebView *webview)
 {
     /* Use the new tab-based client creation */
-    return vb_tab_new(NULL, NULL);
+    return vb_tab_new(NULL, NULL, TRUE);
 }
 
 /**
@@ -1589,12 +1601,25 @@ static void decide_navigation_action(Client *c, WebKitPolicyDecision *dec)
 
     /* Open in new tab if the open_in_new_tab state is set (from ;t hinting) */
     if (c->state.open_in_new_tab) {
-        /* Clear the flag after the first use. */
-        c->state.open_in_new_tab = FALSE;
+        gboolean bg = c->state.open_in_background;
+        /* Only clear the flags after the first use when NOT in g-mode
+         * (extended) hinting. In g-mode the hinting session continues after a
+         * fire, and every further hinted element must also open in a
+         * (background) tab. Clearing the flags here would make later fires
+         * navigate the current page instead. */
+        if (!hints_is_gmode()) {
+            /* Clear the flags after the first use. */
+            c->state.open_in_new_tab = FALSE;
+            c->state.open_in_background = FALSE;
+        }
 
         webkit_policy_decision_ignore(dec);
-        /* Open in a new tab */
-        vb_load_uri(c, &(Arg){TARGET_TAB, (char *)uri});
+        /* Open in a new tab (background if open_in_background is set, e.g. g; hinting) */
+        if (bg) {
+            vb_load_uri(c, &(Arg){TARGET_TAB_BG, (char *)uri});
+        } else {
+            vb_load_uri(c, &(Arg){TARGET_TAB, (char *)uri});
+        }
     }
     /* Spawn new instance if the new win flag is set on the mode, or the
      * navigation was triggered by CTRL-LeftMouse or MiddleMouse. */
@@ -1703,14 +1728,16 @@ static void on_webview_load_changed(WebKitWebView *webview,
             if (uri) {
                 set_title(c, uri);
             }
-            /* Make sure hinting is cleared before the new page is loaded.
-             * Without that vimb would still be in hinting mode after hinting
-             * was started and some links was clicked my mouse. Even if there
-             * could not hints be shown.
-             * Also leave input mode. Otherwise, hitting enter in an input box
-             * on a search engine page will take you to a results page in input
-             * mode. */
-            if (c->mode->flags & FLAG_HINTING || c->mode->id == 'i') {
+            /* Clear hinting before the new page is loaded, unless this is a
+             * g-mode (extended) hint fire redirected to a background tab.
+             * Without this, vimb would still be in hinting mode after hinting
+             * was started and a link was clicked by mouse. Also leave input
+             * mode — hitting Enter in a search-engine input box would leave
+             * input mode set on the results page. In g-mode hinting, the hint
+             * fires and redirects to a background tab, but we must keep the
+             * hinting session so further elements can be selected. */
+            if ((c->mode->flags & FLAG_HINTING && !hints_is_gmode())
+                    || c->mode->id == 'i') {
                 vb_enter(c, 'n');
             }
             break;
@@ -2451,7 +2478,7 @@ static void update_tab_label(Client *c)
  * @uri:     URI to load in the new tab (can be NULL).
  * @return:  The new client or NULL on error.
  */
-Client *vb_tab_new(Client *related, const char *uri)
+Client *vb_tab_new(Client *related, const char *uri, gboolean active)
 {
     Client *c;
     GtkWidget *tab_label;
@@ -2538,8 +2565,16 @@ Client *vb_tab_new(Client *related, const char *uri)
     ex_run_file(c, vb.files[FILES_CONFIG]);
 
     /* Switch to the new tab and focus its webview */
-    gtk_notebook_set_current_page(GTK_NOTEBOOK(vb.notebook), page_num);
-    gtk_widget_grab_focus(GTK_WIDGET(c->webview));
+    if (active) {
+        gtk_notebook_set_current_page(GTK_NOTEBOOK(vb.notebook), page_num);
+        gtk_widget_grab_focus(GTK_WIDGET(c->webview));
+    } else if (related) {
+        /* Background tab created for extended hint mode (g;...). The new
+         * webview and its load must not steal keyboard focus, otherwise the
+         * hinting client stops receiving the keys needed to filter hints.
+         * Re-grab focus on the related (hinting) client's input box. */
+        gtk_widget_grab_focus(GTK_WIDGET(related->input));
+    }
 
     return c;
 }

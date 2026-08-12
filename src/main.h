@@ -73,7 +73,7 @@
 #define FILE_CLOSED  "closed"
 #define FILE_COOKIES "cookies"
 
-enum { TARGET_CURRENT, TARGET_RELATED, TARGET_NEW, TARGET_TAB };
+enum { TARGET_CURRENT, TARGET_RELATED, TARGET_NEW, TARGET_TAB, TARGET_TAB_BG };
 
 typedef enum {
     RESULT_COMPLETE, RESULT_MORE, RESULT_ERROR
@@ -171,6 +171,7 @@ struct State {
     gboolean            processed_key;      /* indicates if a key press was handled and should not bubbled up */
     gboolean            ctrlv;              /* indicates if the CTRL-V temorary submode is on */
     gboolean            open_in_new_tab;    /* next navigation should open in new tab (for ;t hinting) */
+    gboolean            open_in_background;  /* open_in_new_tab target should NOT activate the new tab (for g; hinting) */
 
 #define PROMPT_SIZE 4
     char                prompt[PROMPT_SIZE];/* current prompt ':', 'g;t', '/' including nul */
@@ -343,7 +344,7 @@ void vb_statusbar_show_hover_url(Client *c, VbLinkType type, const char *uri);
 void vb_gui_style_update(Client *c, const char *name, const char *value);
 
 /* Tab management functions */
-Client *vb_tab_new(Client *related, const char *uri);
+Client *vb_tab_new(Client *related, const char *uri, gboolean active);
 void vb_tab_close(Client *c);
 void vb_tab_next(void);
 void vb_tab_prev(void);
