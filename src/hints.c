@@ -102,6 +102,19 @@ void hints_clear(Client *c)
          * already cleared, the link opens in the current tab instead of a
          * new tab. The flag will naturally be consumed when the navigation
          * happens, or will be harmless if no navigation occurs. */
+        /* If this was a g-mode (extended) hinting session, the
+         * open_in_new_tab / open_in_background flags were kept set across
+         * multiple fires so every hinted element opens in a background tab.
+         * When the session ends without consuming the flags (e.g. the user
+         * aborts with ESC after having fired nothing), reset them so a later
+         * normal navigation does not unexpectedly open a background tab. This
+         * must not run unconditionally: in regular ;t mode the flags are
+         * cleared by decide_navigation_action when the pending navigation
+         * fires, and clearing them here would race that navigation. */
+        if (hints.gmode) {
+            c->state.open_in_new_tab = FALSE;
+            c->state.open_in_background = FALSE;
+        }
         vb_input_set_text(c, "");
 
         /* Run this sync else we would disable JavaScript before the hint is
@@ -117,6 +130,16 @@ void hints_clear(Client *c)
             g_object_set(G_OBJECT(setting), "enable-javascript", hints.allow_javascript, NULL);
         }
     }
+}
+
+/**
+ * Return whether the currently active hinting runs in extended (g-) mode.
+ *
+ * @return TRUE if the active hint session was started in g-mode hinting.
+ */
+gboolean hints_is_gmode(void)
+{
+    return hints.gmode;
 }
 
 void hints_create(Client *c, const char *input)
@@ -135,13 +158,19 @@ void hints_create(Client *c, const char *input)
     if (!(c->mode->flags & FLAG_HINTING)) {
         c->mode->flags |= FLAG_HINTING;
 
-        /* For 't' mode (open in new tab), set open_in_new_tab flag on client.
-         * This is needed because the JavaScript navigation may start before
-         * the "DONE:" result is processed, due to the async nature of
-         * WebKitUserMessage. Using client state instead of mode flag because
-         * modes are shared across all tabs. The flag will be cleared by
-         * decide_navigation_action after opening the new tab. */
-        if (hints.mode == 't') {
+        /* For 't' and 'o' in g-mode (extended hint mode), set flags so that
+         * the link is opened in a new background tab that does NOT steal focus.
+         * This lets the user continue hinting more links without leaving the
+         * current page or hint mode. In g-mode, 'o' opens a bg tab (unlike
+         * regular ';o' which navigates the current tab). */
+        if (hints.gmode) {
+            /* In extended hint mode, even 'o' opens in a background tab */
+            if (hints.mode == 'o' || hints.mode == 't') {
+                c->state.open_in_new_tab = TRUE;
+                c->state.open_in_background = TRUE;
+            }
+        } else if (hints.mode == 't') {
+            /* Regular non-g 't' mode: open in new tab, activate it */
             c->state.open_in_new_tab = TRUE;
         }
 
@@ -402,7 +431,13 @@ static gboolean hint_function_check_result(Client *c, GVariant *return_value)
             case 'i':
             case 'I':
                 a.s = v;
-                a.i = (hints.mode == 'I') ? TARGET_TAB : TARGET_CURRENT;
+                if (hints.mode == 'I') {
+                    /* 'I': open image in new tab. In g-mode (extended hint mode),
+                     * use background tab so focus stays on current page/hints. */
+                    a.i = hints.gmode ? TARGET_TAB_BG : TARGET_TAB;
+                } else {
+                    a.i = TARGET_CURRENT;
+                }
                 vb_load_uri(c, &a);
                 break;
 

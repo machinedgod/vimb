@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   The command history and `:` register were saved after the command executed,
   so closing the current tab first freed the client before the write.
   Also fixed a secondary use-after-free in the command-line activation handler
+* Fix `g;{mode}` extended hinting opens links in background tabs
 
 ## [4.0.0]
 ### Added
