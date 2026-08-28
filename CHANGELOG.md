@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## Changed
+* Use webkit's built-in user-agent as default for setting `user-agent`
+
 ### Fixed
 * Fixed use-after-free / crash when closing the focused tab with `:tabclose`.
   The command history and `:` register were saved after the command executed,

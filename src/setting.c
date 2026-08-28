@@ -87,7 +87,9 @@ void setting_init(Client *c)
     char *default_download_path = get_default_download_path();
 
     c->config.settings = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, (GDestroyNotify)setting_free);
-    setting_add(c, "user-agent", TYPE_CHAR, &"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/60.5 Safari/605.1.15 " PROJECT "/" VERSION, webkit, 0, "user-agent");
+    setting_add(c, "user-agent", TYPE_CHAR,
+        (void*)webkit_settings_get_user_agent(webkit_web_view_get_settings(c->webview)),
+        webkit, 0, "user-agent");
     /* TODO use the real names for webkit settings */
     i = 14;
     /* WebKitGTK 6.0: enable-accelerated-2d-canvas is deprecated and removed - setting removed */
