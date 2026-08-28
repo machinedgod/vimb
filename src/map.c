@@ -118,6 +118,10 @@ void map_init(Client *c)
 
 void map_cleanup(Client *c)
 {
+    if (c->map.timout_id) {
+        g_source_remove(c->map.timout_id);
+        c->map.timout_id = 0;
+    }
     if (c->map.list) {
         g_slist_free_full(c->map.list, (GDestroyNotify)free_map);
     }

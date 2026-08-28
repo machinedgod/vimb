@@ -483,7 +483,7 @@ gboolean vb_load_uri(Client *c, const Arg *arg)
         }
 #endif
     } else { /* TARGET_RELATED */
-        Client *newclient = client_new(c->webview);
+        Client *newclient = vb_tab_new(c, NULL, TRUE);
         /* Load the uri into the new client. */
         webkit_web_view_load_uri(newclient->webview, uri);
         set_title(c, uri);
@@ -1544,7 +1544,7 @@ static WebKitWebView *on_webview_create(WebKitWebView *webview,
 
     return NULL;
 #else
-    Client *new = client_new(webview);
+    Client *new = vb_tab_new(c, NULL, TRUE);
 
     return new->webview;
 #endif
@@ -2632,6 +2632,10 @@ void vb_tab_close(Client *c)
     if (c->state.title) {
         g_free(c->state.title);
     }
+    if (c->state.input_timer) {
+        g_source_remove(c->state.input_timer);
+        c->state.input_timer = 0;
+    }
     completion_cleanup(c);
     map_cleanup(c);
     register_cleanup(c);
@@ -2847,7 +2851,6 @@ static WebKitWebView *webview_new(Client *c, WebKitWebView *webview)
     ucm = webkit_user_content_manager_new();
     if (webview) {
         new = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
-                    "network-session", vb.session,
                     "user-content-manager", ucm,
                     "related-view", webview,
                     NULL));
