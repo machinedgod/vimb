@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   Also fixed a secondary use-after-free in the command-line activation handler
 * Fix `g;{mode}` extended hinting opens links in background tabs
 * Fixed segfault when opening a new tab via `window.open()` / `target="_blank"`
+* Fixed spurious `webkit_find_controller_search_finish` CRITICAL assertion when
+  dragging elements or navigating while no search was active. The call is now
+  skipped unless a search is actually in progress.
 
 ## [4.0.0]
 ### Added
