@@ -1,0 +1,60 @@
+<html>
+<head>
+<title>Hyperlink Auditing</title>
+</head>
+<body>
+    <p>
+    This page tests whether hyperlink auditing is supported by vimb/WebKitGTK.
+    Hyperlink auditing is the browser-level <code>ping</code> attribute: when a
+    link carrying <code>ping="URL"</code> is activated, the browser fires an
+    asynchronious POST request to that URL (the "ping") in the background,
+    independent of any JavaScript. The request carries the
+    <code>Ping-From</code> and <code>Ping-To</code> headers, which is how a
+    tracking/analytics service identifies the referrer link.
+    </p>
+    <p>
+    The ping is <em>not</em> disabled by <code>scripts=no</code> — it is a
+    browser-level request, not a script. So this works with vimb's default
+    settings.
+    </p>
+    <p>
+    To observe the ping, run a small HTTP sink on <code>127.0.0.1:8099</code>
+    that prints the request it receives (including headers):
+    </p>
+    <pre>nc -l 8099 &lt; /dev/null
+# or, to also keep listening:
+while true; do nc -l 8099 &lt; /dev/null; done</pre>
+    <p>
+    Then open this page in vimb:
+    </p>
+    <pre>:open file:///path/to/vimb/tests/manual/hyperlink-auditing.html</pre>
+    <ol>
+        <li>Activate the audit link below (focus it and press Enter, or use the
+            follow-hints <code>f</code> / <code>F</code>).</li>
+        <li>Check the sink output: it should show a POST containing a
+            <code>Ping-From</code> header naming this page and a
+            <code>Ping-To</code> header naming the ping URL.</li>
+        <li>Activate the second, non-ping link. The sink should receive
+            <em>nothing</em> — only links with a <code>ping</code> attribute
+            are audited.</li>
+    </ol>
+    <p>
+    If you want to stop vimb from sending such pings, a user script (which you
+    can load via <code>:js</code>) can intercept requests, for example by
+    registering a WebKit
+    <code>resource-load-started</code> / <code>decide-policy</code> handler that
+    aborts requests carrying <code>Ping-From</code>/<code>Ping-To</code>
+    headers.
+    </p>
+    <p>
+    The ping URL below points at the loopback sink; adjust the port if yours
+    differs.
+    </p>
+    <ul>
+        <li><a href="#" ping="http://127.0.0.1:8099/ping">Audited link — should
+            produce a ping request with <code>Ping-From</code>/<code>Ping-To</code></a></li>
+        <li><a href="#">Plain link — no <code>ping</code> attribute, should not
+            produce any request</a></li>
+    </ul>
+</body>
+</html>
