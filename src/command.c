@@ -60,7 +60,9 @@ gboolean command_search(Client *c, const Arg *arg, bool commit)
     g_assert(arg);
 
     if (arg->i == 0) {
-        webkit_find_controller_search_finish(c->finder);
+        if (c->state.search.active) {
+            webkit_find_controller_search_finish(c->finder);
+        }
 
         /* Clear the input only if the search is active and commit flag is
          * set. This allows us to stop searching with and without cleaning
