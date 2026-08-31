@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Fixed spurious `webkit_find_controller_search_finish` CRITICAL assertion when
   dragging elements or navigating while no search was active. The call is now
   skipped unless a search is actually in progress.
+* Fixed `make sandbox` and `make runsandbox` to respect the configured PREFIX
+  from config.mk instead of hardcoding /usr. The sandbox tree now mirrors the
+  user's configured prefix layout (e.g. sandbox/usr/local/bin/vimb with the
+  default PREFIX=/usr/local), fixing the "Cannot access web extension" crash on
+  sandbox builds with a non-/usr PREFIX. Closes #746.
 
 ## [4.0.0]
 ### Added
