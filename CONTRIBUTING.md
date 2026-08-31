@@ -93,14 +93,16 @@ github for that.
 
 To inform vimb during compile time where the webextension should be loaded
 from, the `RUNPREFIX` option can be set to a full qualified path to the
-directory where the extension should be stored in.
+directory where the extension should be stored in.  For sandbox builds
+(`make sandbox`) the extension path is derived automatically from PREFIX.
 
 To run vimb without installation you could run as a sandbox like this
 
     make runsandbox
 
 This will compile and install vimb into the local _sandbox_ folder in the
-project directory.
+project directory. The sandbox layout mirrors the configured PREFIX; e.g.
+with the default PREFIX=/usr/local the binary ends up at sandbox/usr/local/bin/vimb.
 
 [mail]:        https://lists.sourceforge.net/lists/listinfo/vimb-users "vimb - mailing list"
 [issue-doc]:   https://github.com/fanglingsu/vimb/labels/component%3A%20docu

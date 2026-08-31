@@ -44,12 +44,16 @@ uninstall:
 
 clean: src.subdir-clean test-clean
 
+# Build and install vimb into a self-contained ./sandbox tree that mirrors the
+# configured PREFIX, so it can be run without a system-wide install. The sandbox
+# root is derived from PREFIX (sandbox$(PREFIX)) so the binary, extension and
+# man layout match a real install of that prefix.
 sandbox:
 	$(Q)$(MAKE) clean
-	$(Q)$(MAKE) RUNPREFIX=$(CURDIR)/sandbox/usr PREFIX=/usr EXTENSIONDIR=$(CURDIR)/sandbox/usr/lib/vimb DESTDIR=./sandbox install
+	$(Q)$(MAKE) RUNPREFIX=$(CURDIR)/sandbox$(PREFIX) PREFIX=$(PREFIX) EXTENSIONDIR=$(CURDIR)/sandbox$(PREFIX)/lib/vimb DESTDIR=./sandbox install
 
 runsandbox: sandbox
-	sandbox/usr/bin/vimb
+	sandbox$(PREFIX)/bin/vimb
 
 test: version.h
 	$(MAKE) -C src vimb.so
